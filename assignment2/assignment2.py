@@ -62,8 +62,8 @@ def train(epochs):
                     # which is sampled to get the initial weights; default = 0.01
 
     # VARIABLES FOR TRACKING TRAINING PROGRESS
-    show_training_CE_after = 100
-    show_validation_CE_after = 1000
+    show_training_CE_after = 1000
+    show_validation_CE_after = 3000
 
     # LOAD DATA
     [train_input, train_target, valid_input, valid_target,
@@ -148,37 +148,15 @@ def train(epochs):
             # FILL IN CODE. Replace the line below by one of the options.
             embed_to_hid_weights_gradient = np.zeros((numhid1 * numwords, numhid2))
 
-            # Options:
-            # (a)
-            # embed_to_hid_weights_gradient = np.dot(
-            #    np.transpose(back_propagated_deriv_1), embedding_layer_state)
-
             # (b)
-            # embed_to_hid_weights_gradient = np.dot(embedding_layer_state,
-            #                             np.transpose(back_propagated_deriv_1))
-
-            # (c)
-            # embed_to_hid_weights_gradient = back_propagated_deriv_1
-
-            # (d)
-            # embed_to_hid_weights_gradient = embedding_layer_state
-
+            embed_to_hid_weights_gradient = np.dot(embedding_layer_state,
+                                        np.transpose(back_propagated_deriv_1))
 
             # FILL IN CODE. Replace the line below by one of the options.
             hid_bias_gradient = np.zeros((numhid2, 1))
 
-            # Options
             # (a)
-            # hid_bias_gradient = np.sum(back_propagated_deriv_1, axis=1)
-
-            # (b)
-            # hid_bias_gradient = np.sum(back_propagated_deriv_1, axis=0)
-
-            # (c)
-            # hid_bias_gradient = back_propagated_deriv_1
-
-            # (d)
-            # hid_bias_gradient = np.transpose(back_propagated_deriv_1)
+            hid_bias_gradient = np.sum(back_propagated_deriv_1, axis=1)
 
             hid_bias_gradient = hid_bias_gradient.reshape(numhid2,-1, order="F")
 
@@ -186,23 +164,9 @@ def train(epochs):
             # FILL IN CODE. Replace the line below by one of the options.
             back_propagated_deriv_2 = np.zeros((numhid2, batchsize))
 
-            # Options
             # (a)
-            # back_propagated_deriv_2 = np.dot(embed_to_hid_weights,
-            #                                     back_propagated_deriv_1)
-
-            # (b)
-            # back_propagated_deriv_2 = np.dot(back_propagated_deriv_1,
-            #                                         embed_to_hid_weights)
-
-            # (c)
-            # back_propagated_deriv_2 = np.dot(
-            #     np.transpose(back_propagated_deriv_1), embed_to_hid_weights)
-
-            # (d)
-            # back_propagated_deriv_2 = np.dot(back_propagated_deriv_1,
-            #                           np.transpose(embed_to_hid_weights))
-
+            back_propagated_deriv_2 = np.dot(embed_to_hid_weights,
+                                                back_propagated_deriv_1)
 
             word_embedding_weights_gradient.fill(0)
 
@@ -402,49 +366,19 @@ def fprop(input_batch, word_embedding_weights, embed_to_hid_weights,
     # FILL IN CODE. Replace the line below by one of the options.
     hidden_layer_state = np.zeros((numhid2, batchsize))
 
-    # Options
-    # (a)
-    # hidden_layer_state = 1 / (1 + np.exp(inputs_to_hidden_units))
-
-    # (b)
-    # hidden_layer_state = 1 / (1 - np.exp(-inputs_to_hidden_units))
-
     # (c)
-    # hidden_layer_state = 1 / (1 + np.exp(-inputs_to_hidden_units))
-
-    # (d)
-    # hidden_layer_state = -1 / (1 + np.exp(-inputs_to_hidden_units))
-
+    hidden_layer_state = 1 / (1 + np.exp(-inputs_to_hidden_units))
 
     # COMPUTE STATE OF OUTPUT LAYER
     # Compute inputs to softmax
     # FILL IN CODE. Replace the line below by one of the options.
     inputs_to_softmax = np.zeros((vocab_size, batchsize))
 
-    # Options
     # (a)
-    # inputs_to_softmax = np.dot(np.transpose(hid_to_output_weights),
-    #                             hidden_layer_state)
-    # output_bias_tmp = np.tile(output_bias,(1,batchsize))
-    # inputs_to_softmax = inputs_to_softmax + output_bias_tmp
-
-    # (b)
-    # inputs_to_softmax = np.dot(np.transpose(hid_to_output_weights),
-    #                            hidden_layer_state)
-    # output_bias_tmp = np.tile(output_bias,(batchsize,1))
-    # inputs_to_softmax = inputs_to_softmax + output_bias_tmp
-
-    # (c)
-    # inputs_to_softmax = np.dot(hidden_layer_state,
-    #                            np.transpose(hid_to_output_weights))
-    # output_bias_tmp = np.tile(output_bias,(1,batchsize))
-    # inputs_to_softmax = inputs_to_softmax + output_bias_tmp
-
-    # (d)
-    # inputs_to_softmax = np.dot(hid_to_output_weights, hidden_layer_state)
-    # output_bias_tmp = np.tile(output_bias,(batchsize,1))
-    # inputs_to_softmax = inputs_to_softmax + output_bias_tmp
-
+    inputs_to_softmax = np.dot(np.transpose(hid_to_output_weights),
+                                hidden_layer_state)
+    output_bias_tmp = np.tile(output_bias,(1,batchsize))
+    inputs_to_softmax = inputs_to_softmax + output_bias_tmp
 
     # Subtract maximum
     # Remember that adding or subtracting the same constant from each input to a
