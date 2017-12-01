@@ -245,9 +245,32 @@ def d_loss_by_d_model(model, data, wd_coefficient):
     # it just returns a lot of zeros, which is obviously not the correct
     # output. Your job is to replace that by a correct computation.
 
+    num_ex = data['inputs'].shape[1]
+
+    # Forward pass to get output of the neural net
+    hid_lay_act = logistic(np.dot(model['input_to_hid'], data['inputs']))
+    input_softmax = np.dot(model['hid_to_class'], hid_lay_act)
+    class_normalizer = log_sum_exp_over_rows(input_softmax)
+    output_softmax = np.exp(
+        input_softmax - np.tile(class_normalizer, (input_softmax.shape[0], 1)))
+
+    # Calculate the analytically derived gradients
+    dE_class_dW_hid_to_class = 1 / num_ex * np.dot(
+        output_softmax - data['targets'], hid_lay_act.T)
+    dE_wd_dW_hid_to_class = wd_coefficient * model['hid_to_class']
+    dE_dW_hid_to_class = dE_class_dW_hid_to_class + dE_wd_dW_hid_to_class
+
+    dE_class_dW_input_to_hid = 1 / num_ex * np.dot(
+        np.dot(model['hid_to_class'].T, output_softmax -
+               data['targets']) * hid_lay_act * (1 - hid_lay_act),
+        data['inputs'].T)
+    dE_wd_dW_input_to_hid = wd_coefficient * model['input_to_hid']
+    dE_dW_input_to_hid = dE_class_dW_input_to_hid + dE_wd_dW_input_to_hid
+
+    # Construct the object that is returned
     ret = {}
-    ret['input_to_hid'] = model['input_to_hid'] * 0
-    ret['hid_to_class'] = model['hid_to_class'] * 0
+    ret['input_to_hid'] = dE_dW_input_to_hid
+    ret['hid_to_class'] = dE_dW_hid_to_class
 
     return ret
 
