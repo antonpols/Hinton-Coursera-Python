@@ -1,6 +1,9 @@
+import itertools
+
 import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
+
 
 def a4_rand(requested_size, seed):
     ''' PS: Returns array of pseudo-random values from 0 to 1.
@@ -146,7 +149,17 @@ def cd1(rbm_w, visible_data):
     # of size <number of visible units> by <number of data cases>
     # The returned value is the gradient approximation produced by CD-1.
     # It's of the same shape as <rbm_w>.
-    exit("Not yet implemented")
+
+    v_0 = sample_bernoulli(visible_data)
+    h_0 = sample_bernoulli(visible_state_to_hidden_probabilities(rbm_w, v_0))
+    v_1 = sample_bernoulli(hidden_state_to_visible_probabilities(rbm_w, h_0))
+    h_1 = visible_state_to_hidden_probabilities(rbm_w, v_1)
+
+    grad_approx = (configuration_goodness_gradient(v_0, h_0)
+                   - configuration_goodness_gradient(v_1, h_1))
+
+    return grad_approx
+
 
 def configuration_goodness(rbm_w, visible_state, hidden_state):
     # <rbm_w> is a matrix of size <number of hidden units> by
@@ -157,7 +170,12 @@ def configuration_goodness(rbm_w, visible_state, hidden_state):
     # <number of configurations that we're handling in parallel>.
     # This returns a scalar: the mean over cases of the goodness (negative energy)
     # of the described configurations.
-    exit("Not yet implemented")
+
+    num_configs = visible_state.shape[1]
+
+    return 1 / num_configs * np.sum(
+        np.dot(hidden_state, visible_state.T) * rbm_w)
+
 
 def configuration_goodness_gradient(visible_state, hidden_state):
     # <visible_state> is a binary matrix of size <number of visible units> by
@@ -172,7 +190,11 @@ def configuration_goodness_gradient(visible_state, hidden_state):
     # shape as the model parameters, which by the way are not provided to this
     # function. Notice that we're talking about the mean over data cases
     # (as opposed to the sum over data cases).
-    exit("Not yet implemented")
+
+    num_configs = visible_state.shape[1]
+
+    return 1 / num_configs * np.dot(hidden_state, visible_state.T)
+
 
 def hidden_state_to_visible_probabilities(rbm_w, hidden_state):
     # <rbm_w> is a matrix of size <number of hidden units> by
@@ -183,7 +205,9 @@ def hidden_state_to_visible_probabilities(rbm_w, hidden_state):
     # <number of configurations that we're handling in parallel>.
     # This takes in the (binary) states of the hidden units, and returns the
     # activation probabilities of the visible units, conditional on those states.
-    exit("Not yet implemented")
+
+    return 1 / (1 + np.exp(-np.dot(rbm_w.T, hidden_state)))
+
 
 def visible_state_to_hidden_probabilities(rbm_w, visible_state):
     # <rbm_w> is a matrix of size <number of hidden units> by
@@ -194,7 +218,70 @@ def visible_state_to_hidden_probabilities(rbm_w, visible_state):
     # <number of configurations that we're handling in parallel>.
     # This takes in the (binary) states of the visible units, and returns the
     # activation probabilities of the hidden units conditional on those states.
-    exit("Not yet implemented")
+
+    return 1 / (1 + np.exp(-np.dot(rbm_w, visible_state)))
+
+
+def Boltzmann_energy(rbm_w, visible_state, hidden_state):
+    """Calculates the energy of a joint configuration for a Restricted Boltzmann
+    Machine without biases.
+
+    <rbm_w> is a matrix of size <number of hidden units> by
+    <number of visible units>
+    <visible_state> is a binary matrix of size <number of visible units> by
+    <number of configurations that we're handling in parallel>.
+    <hidden_state> is a (possibly but not necessarily binary) matrix of size
+    <number of hidden units> by <number of configurations that
+    we're handling in parallel>.
+    The returned value is the energy of the given joint configuration for
+    the given Restricted Boltzmann Machine. It's of the shape <1> by
+    <number of configurations that we're handling in parallel>.
+    """
+
+    return -np.sum(
+        hidden_state * np.dot(rbm_w, visible_state), axis=0).reshape((1, -1))
+
+
+def partition_function(rbm_w):
+    """Calculates the partition function for a Restricted Boltzmann
+    Machine without biases.
+
+    <rbm_w> is a matrix of size <number of hidden units> by
+    <number of visible units>
+    This returns a scalar: the value of the partition function
+    """
+
+    n_hid, n_vis = rbm_w.shape
+
+    result = 0
+    for visible_state in itertools.product([0, 1], repeat=n_vis):
+        for hidden_state in itertools.product([0, 1], repeat=n_hid):
+            result += np.exp(-Boltzmann_energy(
+                rbm_w, visible_state, hidden_state)).item()
+
+    return result
+
+
+def optimized_partition_function(rbm_w):
+    """Calculates the partition function for a Restricted Boltzmann
+    Machine without biases using an optimization method that rewrites
+    for every fixed value of the hidden state the sum of energies to
+    a product of (1 + exp(W)), where W denotes the weights associated
+    with hidden units that are on.
+
+    <rbm_w> is a matrix of size <number of hidden units> by
+    <number of visible units>
+    This returns a scalar: the value of the partition function
+    """
+
+    n_hid = rbm_w.shape[0]
+
+    result = 0
+    for hidden_state in itertools.product([0, 1], repeat=n_hid):
+        result += np.product(1 + np.exp(np.dot(hidden_state, rbm_w)))
+
+    return result
+
 
 def a4_main(n_hid, lr_rbm, lr_classification, n_iterations):
     # first, train the rbm
@@ -281,6 +368,9 @@ report_calls_to_sample_bernoulli = False
 
 test_rbm_w = a4_rand((100, 256), 0) * 2 - 1
 small_test_rbm_w = a4_rand((10, 256), 0) * 2 - 1
+print('The value of the natural logarithm of the partition function for the '
+      'small_test_rbm_w is {0:.5f}.'.format(
+          np.log(optimized_partition_function(small_test_rbm_w))))
 
 temp = extract_mini_batch(training_data, 1, 1)
 data_1_case = sample_bernoulli(temp['inputs'])
